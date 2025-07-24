@@ -11,3 +11,17 @@ public:
 protected:
     FlashMemoryDevice* m_hardware;
 };
+
+class Application {
+public:
+    Application(DeviceDriver* deviceDriver) : deviceDriver{ deviceDriver } {}
+
+    void readAndPrint(long startAddr, long endAddr) {
+        for (long address = startAddr; address <= endAddr; address++) {
+            deviceDriver->read(address);
+        }
+    }
+
+private:
+    DeviceDriver* deviceDriver;
+};

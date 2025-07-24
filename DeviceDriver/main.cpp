@@ -131,6 +131,15 @@ TEST_F(DeviceDriverFixture, WriteException) {
 	}
 }
 
+TEST_F(DeviceDriverFixture, ReadAndPrint) {
+	Application app{ &driver };
+
+	setNormalReadCallWithTimes(CORRECT_READ_VALUE, 25);
+
+	app.readAndPrint(0x00, 0x04);
+}
+
+
 int main() {
 	::testing::InitGoogleMock();
 	return RUN_ALL_TESTS();
