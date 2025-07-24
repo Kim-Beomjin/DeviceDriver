@@ -77,7 +77,13 @@ TEST_F(DeviceDriverFixture, ReadErrorAfterFive) {
 
 	int data = driver.read(0xFF);
 	EXPECT_EQ(0, data);
+}
 
+TEST_F(DeviceDriverFixture, WriteSuccess) {
+	EXPECT_CALL(mockHardware, write)
+		.Times(1);
+
+	driver.write(0xFF, 1);
 }
 
 int main() {
