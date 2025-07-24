@@ -16,18 +16,18 @@ public:
 
 class DeviceDriverFixture : public Test {
 public:
-	void setNormalReadCall(int expected) {
+	void setNormalReadCall(unsigned char expected) {
 		EXPECT_CALL(mockHardware, read)
 			.WillRepeatedly(Return(expected));
 	}
 
-	void setNormalReadCallWithTimes(int expected, int times) {
+	void setNormalReadCallWithTimes(unsigned char expected, int times) {
 		EXPECT_CALL(mockHardware, read)
 			.Times(times)
 			.WillRepeatedly(Return(expected));
 	}
 
-	void setReadCalls(vector<int>& expected) {
+	void setReadCalls(vector<unsigned char>& expected) {
 		EXPECT_CALL(mockHardware, read)
 			.WillOnce(Return(expected[0]))
 			.WillOnce(Return(expected[1]))
@@ -37,13 +37,27 @@ public:
 			.WillRepeatedly(Return(expected[5]));
 	}
 
+	void setSuccessWriteCall(void) {
+		EXPECT_CALL(mockHardware, write)
+			.Times(1);
+	}
+
+	void setFailedWriteCall(void) {
+		EXPECT_CALL(mockHardware, write)
+			.Times(0);
+	}
+
+	const unsigned char CORRECT_READ_VALUE = (unsigned char)0;
+	const unsigned char INCORRECT_READ_VALUE = (unsigned char)1;
+	const unsigned char ERASED_READ_VALUE = (unsigned char)0xFF;
+
 	NiceMock<MockFlashMemoryDevice> mockHardware;
 	FlashMemoryDevice* hardware = &mockHardware;
 	DeviceDriver driver{ hardware };
 };
 
 TEST_F(DeviceDriverFixture, ReadSuccess) {
-	setNormalReadCall(0);
+	setNormalReadCall(CORRECT_READ_VALUE);
 
 	int data = driver.read(0xFF);
 	EXPECT_EQ(0, data);
@@ -51,14 +65,20 @@ TEST_F(DeviceDriverFixture, ReadSuccess) {
 
 
 TEST_F(DeviceDriverFixture, ReadFiveTimes) {
-	setNormalReadCallWithTimes(0, 5);
+	setNormalReadCallWithTimes(CORRECT_READ_VALUE, 5);
 
 	int data = driver.read(0xFF);
 	EXPECT_EQ(0, data);
 }
 
 TEST_F(DeviceDriverFixture, ReadException) {
-	vector<int> mockCalls = { 0, 0, 0, 0, 1, 0 };
+	vector<unsigned char> mockCalls = { CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										INCORRECT_READ_VALUE,
+										CORRECT_READ_VALUE };
+
 	setReadCalls(mockCalls);
 
 	try {
@@ -72,18 +92,43 @@ TEST_F(DeviceDriverFixture, ReadException) {
 }
 
 TEST_F(DeviceDriverFixture, ReadErrorAfterFive) {
-	vector<int> mockCalls = { 0, 0, 0, 0, 0, 1 };
+	vector<unsigned char> mockCalls = { CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										CORRECT_READ_VALUE,
+										INCORRECT_READ_VALUE };
 	setReadCalls(mockCalls);
 
 	int data = driver.read(0xFF);
 	EXPECT_EQ(0, data);
 }
 
-TEST_F(DeviceDriverFixture, WriteSuccess) {
-	EXPECT_CALL(mockHardware, write)
-		.Times(1);
+TEST_F(DeviceDriverFixture, ReadBeforeWrite) {
+	setNormalReadCallWithTimes(ERASED_READ_VALUE, 1);
 
 	driver.write(0xFF, 1);
+}
+
+TEST_F(DeviceDriverFixture, WriteSuccess) {
+	setNormalReadCall(ERASED_READ_VALUE);
+	setSuccessWriteCall();
+
+	driver.write(0xFF, 1);
+}
+
+TEST_F(DeviceDriverFixture, WriteException) {
+	setNormalReadCall(INCORRECT_READ_VALUE);
+	setFailedWriteCall();
+
+	try {
+		driver.write(0xFF, 1);
+		FAIL();
+	}
+	catch (runtime_error& e) {
+		EXPECT_EQ(string{ e.what() },
+			string{ "Write Fail" });
+	}
 }
 
 int main() {

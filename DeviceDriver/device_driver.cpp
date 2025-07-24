@@ -20,6 +20,8 @@ int DeviceDriver::read(long address)
 
 void DeviceDriver::write(long address, int data)
 {
-    // TODO: implement this method
+    if (unsigned char(0xFF) != m_hardware->read(address))
+        throw runtime_error("Write Fail");
+    
     m_hardware->write(address, (unsigned char)data);
 }
